@@ -1,6 +1,6 @@
 use std::path::Path;
-use sdl_helper::{input::Controls, Render, DrawingArea, Error, input::keyboard::Key};
-use sdl_helper::{geometry::*, Camera};
+use sdl_helper::{input::Controls, Render, DrawingArea, Error, input::keyboard::Key, geometry::*, Camera};
+use ggj2023::board::Board;
 
 
 pub fn main() -> Result<(), Error> {
@@ -12,14 +12,14 @@ pub fn main() -> Result<(), Error> {
     let mut render = Render::new(drawing_area, &context)?;
     let mut controls = Controls::new(&context)?;
     
-    let mut board = ggj2023::Board::new(&mut render)?;
+    let mut board = Board::new(&mut render)?;
 
     board.load_map(Path::new("resources/maps/env.tmx"), &mut render)?;
     
     while !controls.should_close {
         controls.update(&cam);
         
-        
+        board.update(&controls);
 
         if controls.kbm.down(Key::Escape) {
             controls.should_close = true;
