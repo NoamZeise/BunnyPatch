@@ -1,53 +1,68 @@
- use std::path::Path;
-use sdl_helper::{GameObject, input::Controls, Render, DrawingArea, Error, input::keyboard::Key};
-use sdl_helper::geometry;
+use std::path::Path;
+use sdl_helper::{input::Controls, Render, DrawingArea, Error, input::keyboard::Key};
+use sdl_helper::{geometry::*, Camera};
+
 
 pub fn main() -> Result<(), Error> {
     let (mut cam, drawing_area, context) = DrawingArea::new(
         "Name of Game",                              // window name
-        geometry::Rect::new(0.0, 0.0, 400.0, 400.0), // window camera
-        geometry::Vec2::new(400.0, 400.0)            // window size
+        Rect::new(0.0, 0.0, 240.0, 160.0), // window camera
+        Vec2::new(480.0, 320.0)            // window size
     )?;
     let mut render = Render::new(drawing_area, &context)?;
     let mut controls = Controls::new(&context)?;
     
-    let mut obj = GameObject::new_from_tex(
-        render.texture_manager.load(Path::new("resources/textures/error.png"))?
-    );
-    
-    obj.rect.x = cam.get_view_size().x / 2.0 - obj.rect.w / 2.0;
-    obj.rect.y = cam.get_view_size().y / 2.0 - obj.rect.h / 2.0;
+    let mut board = ggj2023::Board::new(&mut render)?;
 
-    const SPEED: f64 = 125.0;
+    board.load_map(Path::new("resources/maps/env.tmx"), &mut render)?;
     
     while !controls.should_close {
         controls.update(&cam);
         
-        if controls.kbm.down(Key::D) {
-            obj.rect.x += SPEED * controls.frame_elapsed;
-        }
-
-        if controls.kbm.down(Key::A) {
-            obj.rect.x -= SPEED * controls.frame_elapsed;
-        }
-
-        if controls.kbm.down(Key::W) {
-            obj.rect.y -= SPEED * controls.frame_elapsed;
-        }
         
-        if controls.kbm.down(Key::S) {
-            obj.rect.y += SPEED * controls.frame_elapsed;
-        }
 
         if controls.kbm.down(Key::Escape) {
             controls.should_close = true;
         }
+
+        if controls.kbm.down(Key::Equals) {
+            increase_win_size(&mut cam, &mut render)?;
+        }
+
+        if controls.kbm.down(Key::Minus) {
+            reduce_win_size(&mut cam, &mut render)?;
+        }
         
         render.start_draw();
 
-        cam.draw(&obj);
-
+        board.draw(&mut cam);
+        
         render.end_draw(&mut cam)?;
     }
     Ok(())
+}
+
+
+fn increase_win_size(cam: &mut Camera, render: &mut Render) -> Result<(), Error> {
+    let mut cs = cam.get_window_size();
+    if cs.x < cam.get_view_size().x {
+        cs.x *= 2.0;
+        cs.y *= 2.0;
+    } else {
+        cs.x += cam.get_view_size().x/2.0;
+        cs.y += cam.get_view_size().y/2.0;
+    }
+    render.set_win_size(cam, cs, false)
+}
+
+fn reduce_win_size(cam: &mut Camera, render: &mut Render) -> Result<(), Error> {
+    let mut cs = cam.get_window_size();
+    if cs.x <= cam.get_view_size().x {
+        cs.x /= 2.0;
+        cs.y /= 2.0;
+    } else {
+        cs.x -= cam.get_view_size().x/2.0;
+        cs.y -= cam.get_view_size().y/2.0;
+    }
+    render.set_win_size(cam, cs, false)
 }
