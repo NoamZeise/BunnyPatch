@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 sdl-helper = { path = "lib/sdl_helper" }
+rand = "0.8.4"

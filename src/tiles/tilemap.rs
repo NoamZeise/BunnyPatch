@@ -1,17 +1,77 @@
+use std::collections::HashMap;
+
 use super::{Tiles, Tile, types};
 
-use sdl_helper::map::tiled;
+use sdl_helper::{map::tiled::{self, Text}, GameObject, resource::Texture, geometry::*, Colour};
+
+pub const TILE: Vec2 = Vec2::new(19.0, 19.0);
+
+#[derive(Clone, Copy)]
+pub struct Choice {
+    pub i: usize,
+    pub x: usize,
+    pub y: usize,
+    pub src: Tiles,
+    pub dst: Tiles,
+}
 
 pub struct Tilemap {
     pub map: Vec<Tiles>,
-    pub map_updates: Vec<bool>,
+    pub map_updates: Vec<Choice>,
     pub w: usize,
     pub h: usize,
+    pub resources: HashMap<Tiles, Vec<GameObject>>,
 }
 
 impl Tilemap {
-    pub fn new() -> Tilemap {
-        Tilemap { map: Vec::new(), w: 0, h: 0, map_updates: Vec::new()}
+    pub fn new(tiles: Texture) -> Tilemap {
+        Tilemap {
+            map: Vec::new(), w: 0, h: 0,
+            map_updates: Vec::new(),
+            resources: Self::load_resources(tiles),
+        }
+    }
+
+    fn load_resources(tiles: Texture) -> HashMap<Tiles, Vec<GameObject>> {
+        let mut r = HashMap::new();
+        r.insert(Tiles::None, vec![
+                     Self::get_tile(tiles, 0, 3)]);
+        r.insert(Tiles::Grass, Vec::new());
+        r.insert(Tiles::Root,
+                 vec![
+                     Self::get_tile(tiles, 0, 1),
+                     Self::get_tile(tiles, 1, 1),
+                     Self::get_tile(tiles, 2, 1),
+                     Self::get_tile(tiles, 3, 1),
+                 ]
+        );
+        r.insert(Tiles::Carrot,
+                 vec![
+                     Self::get_tile(tiles, 0, 0),
+                     Self::get_tile(tiles, 1, 0),
+                     Self::get_tile(tiles, 2, 0),
+                 ]
+        );
+        r.insert(Tiles::Goat,
+                 vec![
+                     Self::get_tile(tiles, 0, 4),
+                     Self::get_tile(tiles, 1, 4),
+                     Self::get_tile(tiles, 2, 4),
+                     Self::get_tile(tiles, 3, 4),
+                 ]
+        );
+        r
+    }
+
+    fn get_tile(tex: Texture, x: usize, y: usize) -> GameObject {
+        GameObject::new(
+            tex,
+            Rect::new(0.0, 0.0, TILE.x, TILE.y),
+            Rect::new(
+                x as f64 * TILE.x, y as f64 * TILE.y, TILE.x, TILE.y
+            ),
+            Vec2::new(1.0, 1.0), Colour::white()
+        )
     }
 
     pub fn set_map(&mut self, map: &tiled::Map) {
@@ -20,8 +80,6 @@ impl Tilemap {
 
         self.map.clear();
         self.map.resize(self.w * self.h, Tiles::None);
-        self.map_updates.clear();
-        self.map_updates.resize(self.w * self.h, false);
         for layer in map.layers.iter() {
             if match layer.props.booleans.get("GameState") {
                 Some(v) => *v,
@@ -46,8 +104,8 @@ impl Tilemap {
 
     pub fn set_tile_objs(&self, tile_objs: &mut Vec<Box<dyn Tile>>) {
         tile_objs.clear();
-        for x in 0..self.w {
-            for y in 0..self.h {
+        for y in 0..self.h {
+            for x in 0..self.w {
                 tile_objs.push(
                     self.set_tile_obj(self.get(x, y), x, y)
                 )
@@ -57,20 +115,35 @@ impl Tilemap {
 
     pub fn set_tile_obj(&self, tile: Tiles, x: usize, y: usize) -> Box<dyn Tile> {
         match tile {
-            Tiles::Root => Box::new(types::Root::new(x, y)),
+            Tiles::Root => Box::new(
+                types::Root::new(x, y, self.resources.get(&Tiles::Root).unwrap().clone())
+            ),
+            Tiles::Grass => Box::new(
+                types::Grass::new(x, y),
+            ),
+            Tiles::Carrot => Box::new(
+                types::Carrot::new(x, y, self.resources.get(&Tiles::Carrot).unwrap().clone()),
+            ),
+            Tiles::Goat => {
+                Box::new(
+                types::Goat::new(x, y, self.resources.get(&Tiles::Goat).unwrap().clone()),
+            )},
             _ => Box::new(types::Empty::new(x, y)),
         }
     }
 
-    pub fn set(&mut self, x: i64, y: i64, t: Tiles) {
+    pub fn set(&mut self, src: Tiles, x: i64, y: i64, t: Tiles) {
         if !self.in_range_i(x, y) {
             return;
         }
         let i = self.bi(x as usize, y as usize);
-        if self.map[i] == Tiles::Grass {
-            self.map[i] = t;
-            self.map_updates[i] = true;
-        }
+        if self.map[i] == Tiles::None { return; }
+        self.map_updates.push(
+            Choice {
+                i,
+                x: x as usize, y: y as usize, src, dst: t
+            }
+        );
     }
 
     pub fn get(&self, x: usize, y: usize) -> Tiles {
@@ -78,13 +151,20 @@ impl Tilemap {
         self.map[i]
     }
 
-    pub fn index(&self, i: usize) -> (usize, usize) {
+    pub fn get_or_none(&self, x: i64, y: i64) -> Tiles {
+        if !self.in_range_i(x, y) {
+            return Tiles::None;
+        }
+        let i = self.bi(x as usize, y as usize);
+        self.map[i]
+    }
+
+    pub fn _index(&self, i: usize) -> (usize, usize) {
         let y = i / self.w;
-        println!("i:{}, x:{}, y:{}", i, i - (y * self.w), y);
         (i - (y * self.w), y)
     }
 
-    fn bi(&self, x: usize, y:usize) -> usize {
+    pub fn bi(&self, x: usize, y:usize) -> usize {
         if !self.in_range(x, y) {
             eprintln!("out of range on board");
             return 0;

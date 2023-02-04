@@ -1,14 +1,16 @@
 
 mod tilemap;
 pub mod types;
-pub use tilemap::Tilemap;
+use sdl_helper::Camera;
+pub use tilemap::{Tilemap, Choice, TILE};
 
-#[derive(Hash, Eq, PartialEq, Clone, Copy)]
+#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub enum Tiles {
     None,
     Grass,
     Root,
     Carrot,
+    Goat,
 }
 
 pub trait Tile {
@@ -22,7 +24,15 @@ pub trait Tile {
         false
     }
 
-    fn update(&mut self, _: &mut Tilemap) {
+    fn update(&mut self, _map: &mut Tilemap) {
+        
+    }
+
+    fn draw(&self, _cam: &mut Camera) {
+
+    }
+
+    fn interact(&mut self, _tile:Tiles) {
         
     }
 }
