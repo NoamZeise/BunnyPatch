@@ -21,6 +21,7 @@ pub struct Tilemap {
     pub w: usize,
     pub h: usize,
     pub resources: HashMap<Tiles, Vec<GameObject>>,
+    pub harvestable: Vec<(usize, usize)>,
 }
 
 impl Tilemap {
@@ -29,6 +30,7 @@ impl Tilemap {
             map: Vec::new(), w: 0, h: 0,
             map_updates: Vec::new(),
             resources: Self::load_resources(tiles),
+            harvestable: Vec::new(),
         }
     }
 
@@ -58,12 +60,13 @@ impl Tilemap {
                      Self::get_tile(tiles, 1, 4),
                      Self::get_tile(tiles, 2, 4),
                      Self::get_tile(tiles, 3, 4),
+                     Self::get_tile(tiles, 4, 4),
                  ]
         );
         r
     }
 
-    fn get_tile(tex: Texture, x: usize, y: usize) -> GameObject {
+    pub fn get_tile(tex: Texture, x: usize, y: usize) -> GameObject {
         GameObject::new(
             tex,
             Rect::new(0.0, 0.0, TILE.x, TILE.y),

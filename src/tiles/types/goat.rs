@@ -11,15 +11,18 @@ pub struct Goat {
     current: GameObject,
     charges: usize,
     used_charge: bool,
+    sleep: usize,
 }
 
+const MAX_CHARGE: usize = 4;
 impl Goat {
     pub fn new(x: usize, y: usize, res: Vec<GameObject>) -> Self {
         let mut current = res[0];
         current.rect.x = x as f64 * TILE.x;
         current.rect.y = y as f64 * TILE.y;
         Self {
-            x, y, res, current, charges: 4, used_charge: false,
+            x, y, res, current, charges: MAX_CHARGE, used_charge: false,
+            sleep: 0,
         }
     }
 
@@ -33,7 +36,7 @@ impl Goat {
 
     fn set_current(&mut self) {
         if self.charges == 0 { return; }
-        self.current = self.res[4 - self.charges];
+        self.current = self.res[5 - self.charges];
         self.current.rect.x = self.x as f64 * TILE.x;
         self.current.rect.y = self.y as f64 * TILE.y;
     }
@@ -50,6 +53,12 @@ impl Tile for Goat {
     }
 
     fn update(&mut self, map: &mut Tilemap) {
+        if self.sleep > 0 {
+            self.sleep -= 1;
+            self.charges += 1;
+            self.set_current();
+            return;
+        }
         self.used_charge = false;
         self.set_tile(self.x as i64, self.y as i64 + 1, map);
         self.set_tile(self.x as i64, self.y as i64 - 1, map);
@@ -62,15 +71,13 @@ impl Tile for Goat {
         if self.charges > 0 && self.used_charge {
             self.charges -= 1;
             self.set_current();
+        } else if self.charges == 0 {
+            self.sleep = MAX_CHARGE;
         }
     }
 
     fn draw(&self, cam: &mut Camera) {
         cam.draw(&self.current);
-    }
-
-    fn removed(&mut self) -> bool {
-        self.charges == 0
     }
 }
 

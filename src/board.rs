@@ -1,11 +1,12 @@
+use crate::button::Button;
 use crate::tiles::{Tiles, Tilemap, Tile, Choice, TILE};
+use crate::ui::Ui;
 
 use sdl_helper::geometry::Vec2;
-use sdl_helper::{Colour, GameObject};
+use sdl_helper::GameObject;
 use sdl_helper::input::{Controls, keyboard::Key, keyboard::MouseButton};
 use sdl_helper::{map::Map, Error, Render, Camera};
 use std::path::Path;
-
 
 pub struct Board {
     map: Option<Map>,
@@ -14,6 +15,8 @@ pub struct Board {
     cursor: GameObject,
     is_selected: bool,
     selected: (usize, usize),
+    pub money: usize,
+    pub dir_btns: [Button; 4],
 }
 
 impl Board {
@@ -31,6 +34,8 @@ impl Board {
                 cursor: GameObject::new_from_tex(render.texture_manager.load(
                     Path::new("resources/textures/cursor.png")
                 )?),
+                money: 0,
+                dir_btns: get_dir_btn(render)?,
             }
         )
     }
@@ -46,7 +51,7 @@ impl Board {
         Ok(())
     }
 
-    pub fn update(&mut self, input: &Controls) {
+    pub fn update(&mut self, input: &Controls, ui: &mut Ui) {
         if input.kbm.press(Key::N) {
             for t in self.obj_map.iter_mut() {
                 t.update(&mut self.board);
@@ -71,14 +76,19 @@ impl Board {
             }
         }
         self.set_cursor(input.kbm.mouse_pos());
-        if self.is_selected && input.kbm.mouse_press(MouseButton::Left) {
+        if self.is_selected && input.kbm.mouse_press(MouseButton::Left)
+            && ui.get_tile() != Tiles::None {
             let i = self.board.bi(
                 self.selected.0, self.selected.1);
             if self.board.map[i] != Tiles::None {
                 self.set(Choice { i,
                                   x: self.selected.0, y: self.selected.1,
-                                  src: Tiles::None, dst: Tiles::Goat });
+                                  src: Tiles::None, dst: ui.pop_tile() });
             }
+            }
+
+        for d in self.dir_btns.iter_mut() {
+            d.update(input);
         }
     }
 
@@ -120,6 +130,11 @@ impl Board {
         if self.is_selected {
             cam.draw(&self.cursor);
         }
+
+        for d in self.dir_btns.iter() {
+            d.draw(cam);
+        }
+        
     }
 
     fn draw_map(&self, cam: &mut Camera) {
@@ -160,21 +175,21 @@ impl Board {
     pub fn update_cam(&self, cam: &mut Camera, controls: &Controls) {
         let mut off = cam.get_offset();
         const CAM_SPEED: f64 = 150.0;
-        if controls.kbm.down(Key::W) {
-            off.y -= CAM_SPEED * controls.frame_elapsed;
-        }
         
-        if controls.kbm.down(Key::A) {
-            off.x -= CAM_SPEED * controls.frame_elapsed;
+        for (i, d) in self.dir_btns.iter().enumerate() {
+            if d.held() {
+                match i {
+                    0 => {off.y -= CAM_SPEED * controls.frame_elapsed; },
+                    1 => {off.y += CAM_SPEED * controls.frame_elapsed; },
+                    2 => {off.x -= CAM_SPEED * controls.frame_elapsed; },
+                    3 => {off.x += CAM_SPEED * controls.frame_elapsed; },
+                    _ => (),
+                       
+                }
+            }
         }
+
         
-        if controls.kbm.down(Key::S) {
-            off.y += CAM_SPEED * controls.frame_elapsed;
-        }
-        
-        if controls.kbm.down(Key::D) {
-            off.x += CAM_SPEED * controls.frame_elapsed;
-        }
         let mut pos = off;
         if pos.x < 0.0 || pos.x > self.board.w as f64 * TILE.x - cam.get_view_size().x {
             pos.x = cam.get_offset().x;
@@ -186,3 +201,64 @@ impl Board {
     }
 }
 
+const BTN_MID: Vec2 = Vec2::new(50.0, 250.0);
+
+fn get_dir_btn(render: &mut Render) -> Result<[Button; 4], Error> {
+    let t = render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_up.png")
+    )?;
+    let size = Vec2::new(t.width as f64, t.height as f64);
+    Ok([
+        Button::new(
+            GameObject::new_from_tex(
+                t
+            ),
+            GameObject::new_from_tex(
+                render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_up_active.png")
+                )?
+            ),
+            BTN_MID+ Vec2::new(0.0, - size.y)
+        ),
+                Button::new(
+            GameObject::new_from_tex(
+                render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_down.png")
+                )?
+            ),
+            GameObject::new_from_tex(
+                render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_down_active.png")
+                )?
+            ),
+                    BTN_MID + Vec2::new(0.0, size.y)
+                ),
+                Button::new(
+            GameObject::new_from_tex(
+                render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_left.png")
+                )?
+            ),
+            GameObject::new_from_tex(
+                render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_left_active.png")
+                )?
+            ),
+            BTN_MID+ Vec2::new(-size.x, 0.0)
+                ),
+                Button::new(
+            GameObject::new_from_tex(
+                render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_right.png")
+                )?
+            ),
+            GameObject::new_from_tex(
+                render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir_right_active.png")
+                )?
+            ),
+            BTN_MID + Vec2::new(size.x, 0.0)
+                ),
+
+        ])
+}

@@ -13,6 +13,7 @@ pub struct Carrot {
     current: GameObject,
     hp: usize,
     no_dmg: bool,
+    
 }
 
 impl Carrot {
