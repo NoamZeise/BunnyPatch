@@ -1,6 +1,6 @@
 use std::path::Path;
-use sdl_helper::{input::Controls, Render, DrawingArea, Error, input::keyboard::Key, geometry::*, Camera, GameObject, audio::AudioManager, Colour};
-use ggj2023::{board::Board, shop::Shop, button::Button, ui::Ui};
+use sdl_helper::{input::{Controls, controller::Button}, Render, DrawingArea, Error, input::keyboard::Key, geometry::*, Camera, GameObject, audio::AudioManager, Colour};
+use bunny_patch::{board::Board, shop::Shop, button, ui::Ui, tiles::Tilemap};
 
 #[derive (Eq, PartialEq)]
 enum GameState {
@@ -11,7 +11,7 @@ enum GameState {
 }
 
 const DEATH_TIME: f64 = 1.2;
-const WIN_FADE: f64 = 1.0;
+const WIN_FADE: f64 = 1.5;
 
 pub fn main() -> Result<(), Error> {
     let (mut cam, drawing_area, context) = DrawingArea::new(
@@ -40,7 +40,7 @@ pub fn main() -> Result<(), Error> {
 
     let mut ui = Ui::new(&mut render)?;
 
-    let mut shop_btn = Button::new(
+    let mut shop_btn = button::Button::new(
         GameObject::new_from_tex(render.texture_manager.load(
             Path::new("resources/textures/btn/shop.png")
         )?),
@@ -48,6 +48,17 @@ pub fn main() -> Result<(), Error> {
             Path::new("resources/textures/btn/shop_active.png")
         )?),
         Vec2::new(20.0, 10.0)
+    );
+    let pm_tex = render.texture_manager.load(Path::new("resources/textures/btn/change.png"))?;
+    let mut plus_btn = button::Button::new(
+        Tilemap::get_tile(pm_tex, 0, 0),
+        Tilemap::get_tile(pm_tex, 0, 1),
+        Vec2::new(70.0, 10.0)
+    );
+    let mut minus_btn = button::Button::new(
+        Tilemap::get_tile(pm_tex, 1, 0),
+        Tilemap::get_tile(pm_tex, 1, 1),
+        Vec2::new(70.0, 30.0)
     );
 
     let mut fade = GameObject::new_from_tex(
@@ -61,8 +72,7 @@ pub fn main() -> Result<(), Error> {
         render.texture_manager.load(Path::new("resources/textures/win_screen.png"))?);
     win.parallax = Vec2::new(0.0, 0.0);
     let mut fade_done = false;
-    let mut fade_in = true
-        ;
+    let mut fade_in = true;
     let mut fade_time = 0.0;
     
     while !controls.should_close {
@@ -128,17 +138,13 @@ pub fn main() -> Result<(), Error> {
                 }
             }
         }
-        
-        
-        if controls.kbm.down(Key::Escape) {
-            controls.should_close = true;
-        }
 
-        if controls.kbm.press(Key::Equals) {
+        plus_btn.update(&controls);
+        if controls.kbm.press(Key::Equals) || plus_btn.clicked() {
             increase_win_size(&mut cam, &mut render)?;
         }
-
-        if controls.kbm.press(Key::Minus) {
+        minus_btn.update(&controls);
+        if controls.kbm.press(Key::Minus) || minus_btn.clicked() {
             reduce_win_size(&mut cam, &mut render)?;
         }
         
@@ -146,12 +152,13 @@ pub fn main() -> Result<(), Error> {
 
         board.draw(&mut cam);
 
+        
+        shop_btn.draw(&mut cam);
+        minus_btn.draw(&mut cam);
+        plus_btn.draw(&mut cam);
+
         if game_state == GameState::Shop {
             shop.draw(&mut cam);
-        }
-
-        if game_state == GameState::Board {
-            shop_btn.draw(&mut cam);
         }
         
         ui.draw(&mut cam);
@@ -166,7 +173,6 @@ pub fn main() -> Result<(), Error> {
                 cam.draw(&win);
             }
         }
-
         
         render.end_draw(&mut cam)?;
     }

@@ -31,7 +31,7 @@ const TURN_LENGTH: f64 = 0.5;
 
 impl Board {
     pub fn new(render: &mut Render) -> Result<Board, Error> {
-        let next_pos = Vec2::new(415.0, 295.0);
+        let next_pos = Vec2::new(400.0, 295.0);
         Ok(
             Board {
                 board : Tilemap::new(
@@ -307,6 +307,19 @@ impl Board {
             }
         }
 
+        if controls.kbm.down(Key::W) {
+            off.y -= CAM_SPEED * controls.frame_elapsed;
+        }
+        if controls.kbm.down(Key::A) {
+            off.x -= CAM_SPEED * controls.frame_elapsed;
+        }
+        if controls.kbm.down(Key::S) {
+            off.y += CAM_SPEED * controls.frame_elapsed;
+        }
+        if controls.kbm.down(Key::D) {
+            off.x += CAM_SPEED * controls.frame_elapsed;
+        }
+
         
         let mut pos = off;
         if pos.x < 0.0 || pos.x > self.board.w as f64 * TILE.x - cam.get_view_size().x {
@@ -319,62 +332,32 @@ impl Board {
     }
 }
 
-const BTN_MID: Vec2 = Vec2::new(50.0, 250.0);
+const BTN_MID: Vec2 = Vec2::new(20.0, 280.0);
 
 fn get_dir_btn(render: &mut Render) -> Result<[Button; 4], Error> {
-    let t = render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_up.png")
+    let dirs = render.texture_manager.load(
+                    Path::new("resources/textures/btn/dir.png")
     )?;
-    let size = Vec2::new(t.width as f64, t.height as f64);
+    let size = TILE;
     Ok([
         Button::new(
-            GameObject::new_from_tex(
-                t
-            ),
-            GameObject::new_from_tex(
-                render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_up_active.png")
-                )?
-            ),
+            Tilemap::get_tile(dirs, 0, 0),
+            Tilemap::get_tile(dirs, 0, 1),
             BTN_MID+ Vec2::new(0.0, - size.y)
         ),
                 Button::new(
-            GameObject::new_from_tex(
-                render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_down.png")
-                )?
-            ),
-            GameObject::new_from_tex(
-                render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_down_active.png")
-                )?
-            ),
+                    Tilemap::get_tile(dirs, 2, 0),
+                    Tilemap::get_tile(dirs, 2, 1),
                     BTN_MID + Vec2::new(0.0, size.y)
                 ),
-                Button::new(
-            GameObject::new_from_tex(
-                render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_left.png")
-                )?
-            ),
-            GameObject::new_from_tex(
-                render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_left_active.png")
-                )?
-            ),
+        Button::new(
+            Tilemap::get_tile(dirs, 1, 0),
+            Tilemap::get_tile(dirs, 1, 1),
             BTN_MID+ Vec2::new(-size.x, 0.0)
                 ),
-                Button::new(
-            GameObject::new_from_tex(
-                render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_right.png")
-                )?
-            ),
-            GameObject::new_from_tex(
-                render.texture_manager.load(
-                    Path::new("resources/textures/btn/dir_right_active.png")
-                )?
-            ),
+        Button::new(
+            Tilemap::get_tile(dirs, 3, 0),
+            Tilemap::get_tile(dirs, 3, 1),
             BTN_MID + Vec2::new(size.x, 0.0)
                 ),
 

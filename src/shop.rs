@@ -36,7 +36,7 @@ impl ShopBtn {
     pub fn set(&mut self, ui: &mut Ui) {
         if self.set { return; }
         self.set = true;
-        self.price_num = ui.get_nums(self.cost, self.pos + Vec2::new(40.0, 20.0));
+        self.price_num = ui.get_nums(self.cost, self.pos + Vec2::new(70.0, 20.0));
         self.price_rects.clear();
         for p in self.price_num.iter() {
             self.price_rects.push(p.rect);
@@ -110,7 +110,7 @@ impl Shop {
             first: true,
             shopkeep,
             tile_btns: vec![
-                ShopBtn::new(Tiles::Goat, 10, GameObject::new_from_tex(
+                ShopBtn::new(Tiles::Goat, 20, GameObject::new_from_tex(
                              render.texture_manager.load(
                                  Path::new("resources/textures/btn/goat.png"))?),
                              GameObject::new_from_tex(
@@ -126,7 +126,7 @@ impl Shop {
                                      Path::new("resources/textures/btn/bush_active.png"))?),
                              base_btn + Vec2::new(0.0, 50.0)
                 ),
-                ShopBtn::new(Tiles::Water, 100, GameObject::new_from_tex(
+                ShopBtn::new(Tiles::Water, 120, GameObject::new_from_tex(
                              render.texture_manager.load(
                                  Path::new("resources/textures/btn/water.png"))?),
                              GameObject::new_from_tex(
@@ -134,7 +134,7 @@ impl Shop {
                                      Path::new("resources/textures/btn/water_active.png"))?),
                              base_btn + Vec2::new(100.0, 0.0)
                 ),
-                ShopBtn::new(Tiles::Ice, 50, GameObject::new_from_tex(
+                ShopBtn::new(Tiles::Ice, 70, GameObject::new_from_tex(
                              render.texture_manager.load(
                                  Path::new("resources/textures/btn/ice.png"))?),
                              GameObject::new_from_tex(
