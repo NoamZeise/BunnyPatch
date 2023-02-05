@@ -1,4 +1,4 @@
-use sdl_helper::{GameObject, geometry::Vec2, input::Controls, Camera};
+use sdl_helper::{GameObject, geometry::{Vec2, Rect}, input::Controls, Camera, Colour};
 
 pub struct Button {
     normal: GameObject,
@@ -47,6 +47,22 @@ impl Button {
 
     pub fn held(&self) -> bool {
         self.held
+    }
+
+    pub fn set_colour(&mut self, col: Colour) {
+        self.active.colour = col;
+        self.normal.colour = col;
+    }
+
+    pub fn set_pos(&mut self, pos: Vec2) {
+        self.normal.rect.x = pos.x;
+        self.normal.rect.y = pos.y;
+        self.active.rect.x = pos.x;
+        self.active.rect.y = pos.y;
+    }
+
+    pub fn get_rect(&self) -> Rect {
+        self.normal.rect
     }
 }
 

@@ -52,6 +52,7 @@ impl Tilemap {
                      Self::get_tile(tiles, 0, 0),
                      Self::get_tile(tiles, 1, 0),
                      Self::get_tile(tiles, 2, 0),
+                     Self::get_tile(tiles, 3, 0),
                  ]
         );
         r.insert(Tiles::Goat,
@@ -61,6 +62,26 @@ impl Tilemap {
                      Self::get_tile(tiles, 2, 4),
                      Self::get_tile(tiles, 3, 4),
                      Self::get_tile(tiles, 4, 4),
+                 ]
+        );
+        r.insert(Tiles::Bush,
+                 vec![
+                     Self::get_tile(tiles, 0, 6),
+                 ]
+        );
+        r.insert(Tiles::Water,
+                 vec![
+                     Self::get_tile(tiles, 0, 5),
+                 ]
+        );
+        r.insert(Tiles::Door,
+                 vec![
+                     Self::get_tile(tiles, 2, 2),
+                 ]
+        );
+        r.insert(Tiles::Ice,
+                 vec![
+                     Self::get_tile(tiles, 0, 7),
                  ]
         );
         r
@@ -93,10 +114,14 @@ impl Tilemap {
                         let i = self.bi(x as usize, y as usize);
                         //println!("Tile ID: {}", layer.tiles[i]);
                         self.map[i] = match layer.tiles[i] {
-                            3 => Tiles::None,
                             0 => Tiles::Grass,
                             1 => Tiles::Root,
                             2 => Tiles::Carrot,
+                            3 => Tiles::None,
+                            4 => Tiles::Bush,
+                            5 => Tiles::Water,
+                            6 => Tiles::Door,
+                            7 => Tiles::Ice,
                             _ => panic!("unrecognized tile"),
                         }
                     }
@@ -130,7 +155,24 @@ impl Tilemap {
             Tiles::Goat => {
                 Box::new(
                 types::Goat::new(x, y, self.resources.get(&Tiles::Goat).unwrap().clone()),
-            )},
+                )},
+            Tiles::Bush => {
+                Box::new(
+                types::Bush::new(x, y, self.resources.get(&Tiles::Bush).unwrap().clone()),
+		)},
+            Tiles::Water => {
+                Box::new(
+                    types::Water::new(x, y, self.resources.get(&Tiles::Water).unwrap().clone()),
+		)},
+            Tiles::Door => {
+                Box::new(
+                    types::Door::new(x, y, self.resources.get(&Tiles::Door).unwrap().clone()),
+		)},
+            Tiles::Ice => {
+                Box::new(
+                    types::Ice::new(x, y, self.resources.get(&Tiles::Ice).unwrap().clone()),
+		)},
+
             _ => Box::new(types::Empty::new(x, y)),
         }
     }

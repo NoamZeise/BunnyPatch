@@ -4,7 +4,7 @@ use crate::ui::Ui;
 
 use sdl_helper::geometry::Vec2;
 use sdl_helper::GameObject;
-use sdl_helper::input::{Controls, keyboard::Key, keyboard::MouseButton};
+use sdl_helper::input::{Controls, keyboard::MouseButton, keyboard::Key};
 use sdl_helper::{map::Map, Error, Render, Camera};
 use std::path::Path;
 
@@ -12,30 +12,72 @@ pub struct Board {
     map: Option<Map>,
     obj_map: Vec<Box<dyn Tile>>,
     pub board: Tilemap,
-    cursor: GameObject,
+    outline: GameObject,
     is_selected: bool,
     selected: (usize, usize),
     pub money: usize,
+    next_btn: Button,
+    skip_btn: Button,
     pub dir_btns: [Button; 4],
+    btn_clicked: bool,
+    turns_to_change: usize,
+    turn_timer: f64,
+    pub complete: bool,
+    pub lose: bool,
 }
+
+const STEPS_PER_TURN : usize = 6;
+const TURN_LENGTH: f64 = 0.5;
 
 impl Board {
     pub fn new(render: &mut Render) -> Result<Board, Error> {
+        let next_pos = Vec2::new(415.0, 295.0);
         Ok(
             Board {
                 board : Tilemap::new(
                     render.texture_manager.load(Path::new(
                         "resources/textures/tiles/game_tiles.png"))
                         ?),
+                next_btn: Button::new(
+                    GameObject::new_from_tex(
+                        render.texture_manager.load(
+                            Path::new("resources/textures/btn/next.png")
+                                )?
+                    ),
+                    GameObject::new_from_tex(
+                        render.texture_manager.load(
+                            Path::new("resources/textures/btn/next_active.png")
+                                )?
+                    ),
+                    next_pos
+                ),
+                skip_btn: Button::new(
+                    GameObject::new_from_tex(
+                        render.texture_manager.load(
+                            Path::new("resources/textures/btn/skip.png")
+                                )?
+                    ),
+                    GameObject::new_from_tex(
+                        render.texture_manager.load(
+                            Path::new("resources/textures/btn/skip_active.png")
+                                )?
+                    ),
+                    next_pos
+                ),
                 map: None,
                 obj_map: Vec::new(),
                 is_selected: false,
                 selected: (0, 0),
-                cursor: GameObject::new_from_tex(render.texture_manager.load(
-                    Path::new("resources/textures/cursor.png")
+                outline: GameObject::new_from_tex(render.texture_manager.load(
+                    Path::new("resources/textures/outline.png")
                 )?),
                 money: 0,
                 dir_btns: get_dir_btn(render)?,
+                btn_clicked: false,
+                turns_to_change: 0,
+                turn_timer: 0.0,
+                complete: false,
+                lose: false,
             }
         )
     }
@@ -51,46 +93,118 @@ impl Board {
         Ok(())
     }
 
-    pub fn update(&mut self, input: &Controls, ui: &mut Ui) {
-        if input.kbm.press(Key::N) {
-            for t in self.obj_map.iter_mut() {
-                t.update(&mut self.board);
-                if t.removed() {
-                    *t = self.board.set_tile_obj(Tiles::Grass, t.pos().0, t.pos().1);
+    fn skip(&mut self, ui: &mut Ui) {
+        self.step(ui);
+        self.turns_to_change -= 1;
+    }
+
+    fn check_carrot(&mut self) {
+        if self.turns_to_change == 0 {
+            let mut carrot = false;
+            for t in self.board.map.iter() {
+                if *t == Tiles::Carrot {
+                    carrot = true;
                 }
             }
-            let choices: Vec<Choice> = self.board.map_updates
-                .drain(0..self.board.map_updates.len()).collect();
-            for c in choices {
-                let current_tile = self.obj_map[c.i].tile();
-                if current_tile != c.dst {
-                    if current_tile == Tiles::Grass {
+            if !carrot {
+                self.lose = true;
+            }
+        }
+    }
+
+    pub fn update(&mut self, input: &Controls, ui: &mut Ui) {
+        self.btn_clicked = false;
+        for d in self.dir_btns.iter_mut() {
+            d.update(input);
+            if d.clicked() {
+                self.btn_clicked = true;
+            }
+        }
+        if self.turns_to_change > 0 {
+            self.turn_timer += input.frame_elapsed;
+            if self.turn_timer > TURN_LENGTH {
+                self.turn_timer = 0.0;
+                self.skip(ui);
+
+            }
+            self.skip_btn.update(input);
+            if self.skip_btn.clicked() || input.kbm.press(Key::N) {
+                while self.turns_to_change > 0 {
+                    self.skip(ui);
+                }
+            }
+            self.check_carrot();
+        } else {
+            self.btn_update(input, ui);
+        }
+    
+    }
+
+    fn btn_update(&mut self, input: &Controls, ui: &mut Ui) {
+
+        self.next_btn.update(input);
+        if self.next_btn.clicked() || input.kbm.press(Key::N) {
+            self.btn_clicked = true;
+            self.turns_to_change = STEPS_PER_TURN;
+        }
+
+        self.set_cursor(input.kbm.mouse_pos());
+        if !self.btn_clicked && self.is_selected && input.kbm.mouse_press(MouseButton::Left)
+            && ui.get_tile() != Tiles::None {
+                self.place_tile(ui);
+            }
+    }
+
+    fn place_tile(&mut self, ui: &mut Ui) {
+        let i = self.board.bi(
+            self.selected.0, self.selected.1);
+        let to_place = ui.get_tile();
+        let prev_tile = self.board.map[i];
+
+        if to_place == Tiles::Key {
+            if prev_tile == Tiles::Door {
+                self.complete = true;
+            }
+            else {
+                return;
+            }
+        }
+        
+        if prev_tile != Tiles::None && prev_tile != Tiles::Door {
+            self.set(Choice { i,
+                              x: self.selected.0, y: self.selected.1,
+                              src: Tiles::None, dst: ui.pop_tile() });
+        }
+    }
+
+    fn step(&mut self, ui: &mut Ui) {
+        for t in self.obj_map.iter_mut() {
+            t.update(&mut self.board);
+            if t.removed() {
+                *t = self.board.set_tile_obj(Tiles::Grass, t.pos().0, t.pos().1);
+            }
+        }
+        let choices: Vec<Choice> = self.board.map_updates
+            .drain(0..self.board.map_updates.len()).collect();
+        for c in choices {
+            let current_tile = self.obj_map[c.i].tile();
+            if current_tile != c.dst {
+                if current_tile == Tiles::Grass && c.dst != Tiles::Ice {
+                    self.set(c);
+                } else  {
+                    self.obj_map[c.i].interact(c.dst);
+                    if self.obj_map[c.i].removed() {
                         self.set(c);
-                    } else  {
-                        self.obj_map[c.i].interact(c.dst);
-                        if self.obj_map[c.i].removed() {
-                            self.set(c);
-                        }
                     }
                 }
             }
         }
-        self.set_cursor(input.kbm.mouse_pos());
-        if self.is_selected && input.kbm.mouse_press(MouseButton::Left)
-            && ui.get_tile() != Tiles::None {
-            let i = self.board.bi(
-                self.selected.0, self.selected.1);
-            if self.board.map[i] != Tiles::None {
-                self.set(Choice { i,
-                                  x: self.selected.0, y: self.selected.1,
-                                  src: Tiles::None, dst: ui.pop_tile() });
-            }
-            }
-
-        for d in self.dir_btns.iter_mut() {
-            d.update(input);
+        if self.board.harvestable.len() > 0 {
+            ui.set_money(ui.get_money() + self.board.harvestable.len());
+            self.board.harvestable.clear();
         }
     }
+
 
     fn set_cursor(&mut self, pos: Vec2) {
         let x: i64 = (pos.x / TILE.x) as i64;
@@ -102,8 +216,8 @@ impl Board {
         }
         self.is_selected = true;
         self.selected = (x as usize, y as usize);
-        self.cursor.rect.x = self.selected.0 as f64 * TILE.x;
-        self.cursor.rect.y = self.selected.1 as f64 * TILE.y;
+        self.outline.rect.x = self.selected.0 as f64 * TILE.x;
+        self.outline.rect.y = self.selected.1 as f64 * TILE.y;
     }
 
     fn set(&mut self, c: Choice) {
@@ -128,13 +242,17 @@ impl Board {
         }
         self.draw_map(cam);
         if self.is_selected {
-            cam.draw(&self.cursor);
+            cam.draw(&self.outline);
         }
 
         for d in self.dir_btns.iter() {
             d.draw(cam);
         }
-        
+        if self.turns_to_change  > 0 {
+            self.skip_btn.draw(cam);
+        } else {
+            self.next_btn.draw(cam);
+        }
     }
 
     fn draw_map(&self, cam: &mut Camera) {

@@ -11,6 +11,11 @@ pub enum Tiles {
     Root,
     Carrot,
     Goat,
+    Bush,
+    Door,
+    Water,
+    Ice,
+    Key,
 }
 
 pub trait Tile {

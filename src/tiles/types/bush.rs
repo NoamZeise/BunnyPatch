@@ -4,24 +4,21 @@ use crate::tiles::Tilemap;
 
 use super::super::{Tile, Tiles, tilemap::TILE};
 
-const GROWTH_SPEED: usize = 2;
+const GROWTH_SPEED: usize = 8;
 
-pub struct Root {
+pub struct Bush {
     pub x: usize,
     pub y: usize,
     pub growth: usize,
-    pub age: usize,
-    pub max_age: usize,
     pub res: Vec<GameObject>,
     pub current: GameObject,
     pub removed: bool,
     pub frozen: bool,
 }
 
-impl Root {
+impl Bush {
     pub fn new(x: usize, y: usize, res: Vec<GameObject>) -> Self {
         let mut current = res[0];
-        let max_age = res.len() - 1;
         current.rect.x = x as f64 * TILE.x;
         current.rect.y = y as f64 * TILE.y;
         Self {
@@ -29,8 +26,6 @@ impl Root {
             y,
             current,
             res,
-            age: 0,
-            max_age,
             removed: false,
             growth: 0,
             frozen: false,
@@ -38,10 +33,8 @@ impl Root {
     }
 
     fn spread(&mut self, map: &mut Tilemap) {
-        map.set(self.tile(), self.x as i64 + 1, self.y as i64, self.tile());
-        map.set(self.tile(), self.x as i64, self.y as i64 + 1, self.tile());
-        map.set(self.tile(), self.x as i64, self.y as i64 - 1, self.tile());
-        map.set(self.tile(), self.x as i64 - 1, self.y as i64, self.tile());
+        map.set(self.tile(), self.x as i64 - 1, self.y as i64 - 1, self.tile());
+        map.set(self.tile(), self.x as i64 + 1, self.y as i64 + 1, self.tile());
     }
 
     fn behaviour(&mut self, map: &mut Tilemap) {
@@ -51,22 +44,14 @@ impl Root {
             self.current.colour.b = 255;
             return;
         }
-        
-        if self.age != self.max_age{
-            self.age += 1;
-                self.current = self.res[self.age];
-            self.current.rect.x = self.x as f64 * TILE.x;
-            self.current.rect.y = self.y as f64 * TILE.y;
-        } else if !self.frozen {
-            self.spread(map);
-        }
+        self.spread(map);
     }
 }
 
 
-impl Tile for Root {
+impl Tile for Bush {
     fn tile(&self) -> Tiles {
-        Tiles::Root
+        Tiles::Bush
     }
     
     fn pos(&self) -> (usize, usize) {
@@ -86,7 +71,7 @@ impl Tile for Root {
     }
 
     fn interact(&mut self, other: Tiles) {
-        if other == Tiles::Grass || other == Tiles::Bush {
+        if other == Tiles::Grass {
             self.removed = true;
         }
         if other == Tiles::Ice {

@@ -13,6 +13,8 @@ pub struct Ui {
     tiles: Texture,
     changed_money: bool,
     tile_to_set: Tiles,
+    current_cursor: GameObject,
+    cursor: GameObject,
 }
 
 impl Ui {
@@ -20,6 +22,11 @@ impl Ui {
         let mut money = GameObject::new_from_tex(
             render.texture_manager.load(
                 Path::new("resources/textures/carrot.png")
+            )?
+        );
+        let cursor = GameObject::new_from_tex(
+            render.texture_manager.load(
+                Path::new("resources/textures/cursor.png")
             )?
         );
         money.rect.x = 420.0;
@@ -34,10 +41,27 @@ impl Ui {
             )?,
             changed_money: true,
             tile_to_set: Tiles::None,
+            current_cursor: cursor,
+            cursor,
         })
     }
 
     pub fn update(&mut self, controls: &Controls) {
+        if self.tile_to_set != Tiles::None {
+            self.current_cursor = Tilemap::get_tile(self.tiles, 0, match self.tile_to_set {
+                Tiles::Goat => 4,
+                Tiles::Water => 5,
+                Tiles::Bush => 6,
+                Tiles::Ice => 7,
+                Tiles::Key => 8,
+                _ => panic!("not able to buy that tile"),
+
+            });
+        } else {
+            self.current_cursor = self.cursor;
+        }
+        self.current_cursor.rect.x = controls.kbm.mouse_pos().x;
+        self.current_cursor.rect.y = controls.kbm.mouse_pos().y;
         if self.changed_money {
             self.changed_money = false;
             self.money_tex = self.get_nums(self.money, self.money_icon.rect.centre());
@@ -49,27 +73,33 @@ impl Ui {
         for m in self.money_tex.iter() {
             cam.draw(m);
         }
+        cam.draw(&self.current_cursor);
+    }
+
+    fn get_digit(&mut self, num: usize, pos: Vec2, place: f64) -> GameObject {
+        let mut t = Tilemap::get_tile(self.tiles, num, 3);
+        t.parallax = Vec2::new(0.0, 0.0);
+        t.rect.x = pos.x - TILE.x * 0.5 * place;
+        t.rect.y = pos.y;
+        return t;
     }
 
     pub fn get_nums(&mut self, num: usize, pos: Vec2) -> Vec<GameObject> {
         let mut n = Vec::new();
 
         let unit = num % 10;
-        let ten = ( num / 10) % 10;
+        n.push(self.get_digit(unit, pos, 0.0));
 
-        let mut u = Tilemap::get_tile(self.tiles, unit, 3);
-        u.rect.x = pos.x;
-        u.rect.y = pos.y;
-        u.parallax = Vec2::new(0.0, 0.0);
-        if ten != 0 {
-            let mut t = Tilemap::get_tile(self.tiles, ten, 3);
-            t.parallax = Vec2::new(0.0, 0.0);
-            t.rect.x = pos.x - TILE.x * 0.5;
-            t.rect.y = pos.y;
-            n.push(t);
+        let mut order = 10;
+        let mut index = 1.0;
+        while num >= order {
+            let d = (num / order) % 10;
+            n.push(self.get_digit(d, pos, index));
+            order *= 10;
+            index += 1.0;
         }
-        n.push(u);
 
+        n.reverse();
         n
     }
 
