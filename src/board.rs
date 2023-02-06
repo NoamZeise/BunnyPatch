@@ -112,6 +112,11 @@ impl Board {
         }
     }
 
+    fn skip_pressed(&self, input: &Controls) -> bool {
+        self.skip_btn.clicked() || input.kbm.press(Key::N) || input.kbm.press(Key::Space) ||
+            input.kbm.press(Key::Return)
+    }
+
     pub fn update(&mut self, input: &Controls, ui: &mut Ui) {
         self.btn_clicked = false;
         for d in self.dir_btns.iter_mut() {
@@ -128,7 +133,7 @@ impl Board {
 
             }
             self.skip_btn.update(input);
-            if self.skip_btn.clicked() || input.kbm.press(Key::N) {
+            if  self.skip_pressed(input){
                 while self.turns_to_change > 0 {
                     self.skip(ui);
                 }
@@ -143,7 +148,7 @@ impl Board {
     fn btn_update(&mut self, input: &Controls, ui: &mut Ui) {
 
         self.next_btn.update(input);
-        if self.next_btn.clicked() || input.kbm.press(Key::N) {
+        if self.skip_pressed(input) {
             self.btn_clicked = true;
             self.turns_to_change = STEPS_PER_TURN;
         }
@@ -307,16 +312,16 @@ impl Board {
             }
         }
 
-        if controls.kbm.down(Key::W) {
+        if controls.kbm.down(Key::W) || controls.kbm.down(Key::Up) {
             off.y -= CAM_SPEED * controls.frame_elapsed;
         }
-        if controls.kbm.down(Key::A) {
+        if controls.kbm.down(Key::A) || controls.kbm.down(Key::Left) {
             off.x -= CAM_SPEED * controls.frame_elapsed;
         }
-        if controls.kbm.down(Key::S) {
+        if controls.kbm.down(Key::S) || controls.kbm.down(Key::Down) {
             off.y += CAM_SPEED * controls.frame_elapsed;
         }
-        if controls.kbm.down(Key::D) {
+        if controls.kbm.down(Key::D) || controls.kbm.down(Key::Right) {
             off.x += CAM_SPEED * controls.frame_elapsed;
         }
 

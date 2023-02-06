@@ -169,6 +169,10 @@ impl Shop {
         self.fade.colour.a = ((1.0 - factor) * 100.0) as u8;
     }
 
+    pub fn close_shop(&mut self) {
+        self.closed = true;
+    }
+
     pub fn update(&mut self, input: &Controls, ui: &mut Ui) {
         if self.first {
             self.first = false;
@@ -202,7 +206,7 @@ impl Shop {
         for btn in self.tile_btns.iter_mut() {
             btn.btn.update(input);
             btn.btn.set_colour(if  ui.get_money() < btn.cost {
-                Colour::new(100, 100, 100, 100)
+                Colour::new(150, 150, 150, 255)
             } else {
                 Colour::white()
             });

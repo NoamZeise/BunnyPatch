@@ -78,11 +78,17 @@ pub fn main() -> Result<(), Error> {
     while !controls.should_close {
         controls.update(&cam);
 
-        if game_state == GameState::Board {
-            shop_btn.update(&controls);
-            if shop_btn.clicked() {
-                game_state = GameState::Shop;
-                shop.open();
+        shop_btn.update(&controls);
+        if shop_btn.clicked() || controls.kbm.press(Key::Escape) {
+            match game_state {
+                GameState::Board => {
+                    game_state = GameState::Shop;
+                    shop.open();
+                }
+                GameState::Shop => {
+                    shop.close_shop();
+                }
+                _ => (),
             }
         }
 
